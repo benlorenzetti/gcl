@@ -55,15 +55,23 @@
  *         ...
  *         vec.push_back();
  */
+struct lor_vector_namespace_s;
+struct lor_vector_s;
 
-#define LOR_VECTOR_DOT_NAMESPACE lor_vector
+#define LOR_VECTOR_CONCAT(x, y) x ## y
+#define LOR_VECTOR_TYPENAME_MACRO(new_name) LOR_VECTOR_CONCAT(new_name, _t)
+
+#define LOR_VECTOR_FUNCTION_NAMESPACE lor_vector
+#define LOR_VECTOR_TYPENAME lor_vector_t
 #ifdef LOR_VECTOR_NAMESPACE
-  #undef  LOR_VECTOR_DOT_NAMESPACE
-  #define LOR_VECTOR_DOT_NAMESPACE LOR_VECTOR_NAMESPACE
+  #undef  LOR_VECTOR_FUNCTION_NAMESPACE
+  #define LOR_VECTOR_FUNCTION_NAMESPACE  LOR_VECTOR_NAMESPACE
+  #undef  LOR_VECTOR_TYPENAME
+  #define LOR_VECTOR_TYPENAME LOR_VECTOR_TYPENAME_MACRO(LOR_VECTOR_NAMESPACE)
 #endif
 
-struct lor_vector_namespace_s;
-extern struct lor_vector_namespace_s const LOR_VECTOR_DOT_NAMESPACE;
+extern struct lor_vector_namespace_s const LOR_VECTOR_FUNCTION_NAMESPACE;
+typedef struct lor_vector_s LOR_VECTOR_TYPENAME;
 
 /*  Constants A and B define the reservation policy for the automatic memory
  *  managenment. When the current reserved space x is insufficient, the array
@@ -101,28 +109,28 @@ typedef void (*lor_vector_dest_f) (void*);
   NULL                                                     \
 }
 
-typedef struct lor_vector_s {
+struct lor_vector_s {
   int t_size;
   lor_vector_copy_f copy_constructor;
   lor_vector_dest_f destructor;
   int alloc_len; // negative alloc_len indicates an explicit reservation that
         // should not be shrunk by the auto_reserve() function
-  void* begin;
-  void* end;
-} lor_vector;
+  char* begin;
+  char* end;
+};
 
-void* lor_vector_auto_reserve (lor_vector *);
-void* lor_vector_at (const lor_vector*, int);
-int lor_vector_push_back (lor_vector*, const void*);
-int lor_vector_insert (lor_vector*, int, const void*);
-int lor_vector_size (const lor_vector*);
+void* lor_vector_auto_reserve (struct lor_vector_s *);
+void* lor_vector_at (const struct lor_vector_s*, int);
+int lor_vector_push_back (struct lor_vector_s*, const void*);
+int lor_vector_insert (struct lor_vector_s*, int, const void*);
+int lor_vector_size (const struct lor_vector_s*);
 
 struct lor_vector_namespace_s {
-  void* (*const auto_reserve)(lor_vector *);
-  void* (*const at)(const lor_vector*, int);
-  int (*const push_back)(lor_vector*, const void*);
-  int (*const insert)(lor_vector*, int, const void*);
-  int (*const size)(const lor_vector*);
+  void* (*const auto_reserve)(struct lor_vector_s *);
+  void* (*const at)(const struct lor_vector_s*, int);
+  int (*const push_back)(struct lor_vector_s*, const void*);
+  int (*const insert)(struct lor_vector_s*, int, const void*);
+  int (*const size)(const struct lor_vector_s*);
 };
 
 struct lor_vector_namespace_s const LOR_VECTOR_DOT_NAMESPACE ={
@@ -137,18 +145,18 @@ struct lor_vector_namespace_s const LOR_VECTOR_DOT_NAMESPACE ={
 #include <stdlib.h>
 #include <string.h>
 
-int lor_vector_size (const lor_vector* vec) {
+int lor_vector_size (const struct lor_vector_s* vec) {
   return (vec->end - vec->begin) / vec->t_size;
 }
 
-int lor_vector_insert (lor_vector* vec, int pos, const void* val) {
+int lor_vector_insert (struct lor_vector_s* vec, int pos, const void* val) {
   // Ensure there is allocated space available for the new array
   if (!lor_vector_auto_reserve(vec))
     return LOR_VECTOR_ALLOCATION_FAILURE;
   // Shift rightwards all elements starting at pos
   if (vec->copy_constructor)
   {
-    void* ptr;
+    char* ptr;
     for (ptr=vec->end; ptr> vec->begin + pos*vec->t_size; ptr -= vec->t_size)
     {
       int cc_return = (*vec->copy_constructor) (ptr - vec->t_size, ptr);
@@ -158,7 +166,7 @@ int lor_vector_insert (lor_vector* vec, int pos, const void* val) {
   }
   else // (no copy constructor specified)
   {
-    void* pos_ptr = vec->begin + pos * vec->t_size;
+    char* pos_ptr = vec->begin + pos * vec->t_size;
     int copy_byte_length = vec->t_size * (lor_vector_size(vec) - pos);
     memmove (pos_ptr + vec->t_size, pos_ptr, copy_byte_length);
   }
@@ -174,7 +182,7 @@ int lor_vector_insert (lor_vector* vec, int pos, const void* val) {
   return LOR_VECTOR_EXIT_SUCCESS;
 }
 
-int lor_vector_push_back (lor_vector* vec, const void* val) {
+int lor_vector_push_back (struct lor_vector_s* vec, const void* val) {
 printf ("entering push_back()\n");
   // Ensure there is allocated space available for the new value
   if (!lor_vector_auto_reserve(vec))
@@ -193,17 +201,17 @@ printf ("entering push_back()\n");
   return LOR_VECTOR_EXIT_SUCCESS;
 }
 
-void* lor_vector_at (const lor_vector* vec, int n) {
+void* lor_vector_at (const struct lor_vector_s* vec, int n) {
   if (n >= (vec->end - vec->begin) / vec->t_size)
     return NULL; // out of bounds error
   return vec->begin + n * vec->t_size;
 }
 
-void* lor_vector_auto_reserve (lor_vector* dest) {
+void* lor_vector_auto_reserve (struct lor_vect dest) {
 printf ("entering auto_reserve()...");
   // By default, assume that no resizing or relocation will be done-----------|
   int new_alloc_len = dest->alloc_len;
-  void* new_alloc_ptr = dest->begin;
+  char* new_alloc_ptr = dest->begin;
   int array_len = (dest->end - dest->begin) / dest->t_size;
   // Test if more memory needs to be reserved---------------------------------|
   if (array_len == abs(dest->alloc_len))  // note that negative alloc_size

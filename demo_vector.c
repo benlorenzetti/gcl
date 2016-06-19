@@ -2,13 +2,23 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define LOR_VECTOR_NAMESPACE vector
+//#define LOR_VECTOR_NAMESPACE vector
 #include "lor_vector.h"
 
 typedef struct city_s {
   char* name;
   int population;
 } city;
+
+const city* const city_const (const char* name, int pop) {
+  static city static_city;
+  static char* static_name;
+  static_name = realloc(static_name, strlen(name));
+  strcpy(static_name, name);
+  static_city.name = static_name;
+  static_city.population = pop;
+  return &static_city;
+}
 
 int city_copy_constructor(city* dest, const city* src) {
   if(dest->name = malloc(1 + strlen(src->name)))
@@ -24,19 +34,14 @@ void godzilla(city* dest) { // godzilla, aka city destructor
 }
 
 int main() {
-  lor_vector japanese_cities = LOR_VECTOR(city, city_copy_constructor, godzilla);
+  lor_vector_t japanese_cities = LOR_VECTOR(city, city_copy_constructor, godzilla);
 
-  char name[1000];
-  city c = {name, 0};
-  strcpy(c.name, "Tokyo");
-  c.population = 13510000;
-  vector.push_back(&japanese_cities, &c);
-  strcpy(c.name, "Kyoto");
-  c.population = 1474000;
-  vector.push_back(&japanese_cities, &c);
+  lor_vector.push_back(&japanese_cities, city_const("Tokyo", 13510000));
+  lor_vector.push_back(&japanese_cities, city_const("Kyoto", 1474000));
 
   int i = 0;
   city* city_ptr;
-  while (city_ptr = (city*) vector.at(&japanese_cities, i++))
+  while (city_ptr = (city*)lor_vector.at(&japanese_cities, i++))
     printf("%s has population %d\n", city_ptr->name, city_ptr->population);
 }
+
