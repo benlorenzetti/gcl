@@ -110,7 +110,7 @@ typedef void (*lor_vector_dest_f) (void*);
 }
 
 struct lor_vector_s {
-  int t_size;
+  const int t_size;
   lor_vector_copy_f copy_constructor;
   lor_vector_dest_f destructor;
   int alloc_len; // negative alloc_len indicates an explicit reservation that
@@ -137,7 +137,8 @@ struct lor_vector_namespace_s const LOR_VECTOR_FUNCTION_NAMESPACE ={
   lor_vector_auto_reserve,
   lor_vector_at,
   lor_vector_push_back,
-  lor_vector_insert
+  lor_vector_insert,
+  lor_vector_size
 };
 
 /* Begin the Implentation File */
