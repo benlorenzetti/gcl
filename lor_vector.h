@@ -126,14 +126,14 @@ int lor_vector_insert (struct lor_vector_s*, int, const void*);
 int lor_vector_size (const struct lor_vector_s*);
 
 struct lor_vector_namespace_s {
-  void* (*const auto_reserve)(struct lor_vector_s *);
+  void* (*const auto_reserve)(struct lor_vector_s*);
   void* (*const at)(const struct lor_vector_s*, int);
   int (*const push_back)(struct lor_vector_s*, const void*);
   int (*const insert)(struct lor_vector_s*, int, const void*);
   int (*const size)(const struct lor_vector_s*);
 };
 
-struct lor_vector_namespace_s const LOR_VECTOR_DOT_NAMESPACE ={
+struct lor_vector_namespace_s const LOR_VECTOR_FUNCTION_NAMESPACE ={
   lor_vector_auto_reserve,
   lor_vector_at,
   lor_vector_push_back,
@@ -157,9 +157,9 @@ int lor_vector_insert (struct lor_vector_s* vec, int pos, const void* val) {
   if (vec->copy_constructor)
   {
     char* ptr;
-    for (ptr=vec->end; ptr> vec->begin + pos*vec->t_size; ptr -= vec->t_size)
+    for (ptr=vec->end; ptr >= vec->begin + pos*vec->t_size; ptr -= vec->t_size)
     {
-      int cc_return = (*vec->copy_constructor) (ptr - vec->t_size, ptr);
+      int cc_return = (*vec->copy_constructor) (ptr, ptr - vec->t_size);
       if (cc_return)
         return cc_return;
     }
@@ -178,12 +178,12 @@ int lor_vector_insert (struct lor_vector_s* vec, int pos, const void* val) {
   }
   else
     memmove (vec->begin + pos * vec->t_size, val, vec->t_size);
-  // Return success indicator
+  // Increment the end pointer and return success indicator
+  vec->end += vec->t_size;
   return LOR_VECTOR_EXIT_SUCCESS;
 }
 
 int lor_vector_push_back (struct lor_vector_s* vec, const void* val) {
-printf ("entering push_back()\n");
   // Ensure there is allocated space available for the new value
   if (!lor_vector_auto_reserve(vec))
     return LOR_VECTOR_ALLOCATION_FAILURE;
@@ -207,8 +207,7 @@ void* lor_vector_at (const struct lor_vector_s* vec, int n) {
   return vec->begin + n * vec->t_size;
 }
 
-void* lor_vector_auto_reserve (struct lor_vect dest) {
-printf ("entering auto_reserve()...");
+void* lor_vector_auto_reserve (struct lor_vector_s* dest) {
   // By default, assume that no resizing or relocation will be done-----------|
   int new_alloc_len = dest->alloc_len;
   char* new_alloc_ptr = dest->begin;
@@ -217,7 +216,6 @@ printf ("entering auto_reserve()...");
   if (array_len == abs(dest->alloc_len))  // note that negative alloc_size
   {                          // indicates it should not be automatically shrunk
     new_alloc_len = LOR_VECTOR_A * abs(dest->alloc_len) + LOR_VECTOR_B;
-printf ("grow to new len = %d...", new_alloc_len);
     new_alloc_ptr = realloc(dest->begin, new_alloc_len * dest->t_size);
     if (!new_alloc_ptr) // realloc() failure does not disturb original memory
       return NULL;// so return NULL but dont overwrite dest->begin/alloc_size 
@@ -227,7 +225,6 @@ printf ("grow to new len = %d...", new_alloc_len);
   else if (array_len < (dest->alloc_len - LOR_VECTOR_B) / LOR_VECTOR_A)
   {
     new_alloc_len = (dest->alloc_len - LOR_VECTOR_B) / LOR_VECTOR_A;
-printf ("shrink to new len = %d...", new_alloc_len);
     new_alloc_ptr = realloc(dest->begin, new_alloc_len * dest->t_size);
     if (!new_alloc_ptr)
       return dest->begin; // failing to shrink the array isnt really a failure
@@ -239,7 +236,6 @@ printf ("shrink to new len = %d...", new_alloc_len);
   dest->alloc_len = new_alloc_len;
   dest->begin = new_alloc_ptr;
   dest->end = new_alloc_ptr + array_len * dest->t_size;
-printf("success.\n");
   return dest->begin;
 }
 

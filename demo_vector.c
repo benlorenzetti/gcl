@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-//#define LOR_VECTOR_NAMESPACE vector
+#define LOR_VECTOR_NAMESPACE vector
 #include "lor_vector.h"
 
 typedef struct city_s {
@@ -34,14 +34,15 @@ void godzilla(city* dest) { // godzilla, aka city destructor
 }
 
 int main() {
-  lor_vector_t japanese_cities = LOR_VECTOR(city, city_copy_constructor, godzilla);
+  vector_t japanese_cities = LOR_VECTOR(city, city_copy_constructor, godzilla);
+  vector.push_back(&japanese_cities, city_const("Tokyo", 13510000));
+  vector.push_back(&japanese_cities, city_const("Kyoto", 1474000));
+  vector.insert(&japanese_cities, 1, city_const("Hiroshima", 1174000));
 
-  lor_vector.push_back(&japanese_cities, city_const("Tokyo", 13510000));
-  lor_vector.push_back(&japanese_cities, city_const("Kyoto", 1474000));
-
+  // Print city populations from the dynamic array
   int i = 0;
   city* city_ptr;
-  while (city_ptr = (city*)lor_vector.at(&japanese_cities, i++))
+  while (city_ptr = (city*)vector.at(&japanese_cities, i++))
     printf("%s has population %d\n", city_ptr->name, city_ptr->population);
 }
 
