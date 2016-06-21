@@ -89,6 +89,10 @@ typedef struct lor_vector_s LOR_VECTOR_TYPENAME;
 #define LOR_VECTOR_A 1.3
 #define LOR_VECTOR_B 1
 
+#define LOR_VECTOR_PASS_BY_VALUE_SIZE \
+  (sizeof(double) > sizeof(long) ? sizeof(double) : sizeof(long))
+  
+
 /*  The type "lor_vetlor_copy_f" is defined for a "pointer to a function with a
  *  generic dest and src pointer parameters and integer return value".
  *  Functions cast to this type can be registered as the copy constructor to be
@@ -121,14 +125,33 @@ struct lor_vector_s {
 
 void* lor_vector_auto_reserve (struct lor_vector_s *);
 void* lor_vector_at (const struct lor_vector_s*, int);
-int lor_vector_push_back (struct lor_vector_s*, const void*);
+
+int lor_vector_push_back (struct lor_vector_s*, ...);
+/*  The push back function copies a new element to the end of the array using
+ *  memcpy() or the user defined copy constructor.
+ *
+ *  param1:  pointer to the lor_vector to which the element will be added
+ *  param2:  the element to be copied onto the back of the array.
+ *           (This parameter is variadic depending on the sizeof each element.
+ *            If t_size matches a defined type (char, int, long, etc), then it
+ *            should be passed by value, otherwise larger types should be passed
+ *            like a const pointer. I.e. think of this function as either
+ *                int lor_vector_push_back(struct lor_vector_s*, int);
+ *            or
+ *                int lor_vector_push_back(struct lor_vector_s*, const void*);
+ *            if the type is a structure larger than the basic machine types.)
+ *  return:  LOR_EXIT_SUCCESS (0), or a LOR_VECTOR_<> failure code, or a user
+ *           defined code from the copy contstructor if it did not return
+ *           LOR_EXIT_SUCCESS.
+*/
+
 int lor_vector_insert (struct lor_vector_s*, int, const void*);
 int lor_vector_size (const struct lor_vector_s*);
 
 struct lor_vector_namespace_s {
   void* (*const auto_reserve)(struct lor_vector_s*);
   void* (*const at)(const struct lor_vector_s*, int);
-  int (*const push_back)(struct lor_vector_s*, const void*);
+  int (*const push_back)(struct lor_vector_s*, ...);
   int (*const insert)(struct lor_vector_s*, int, const void*);
   int (*const size)(const struct lor_vector_s*);
 };
@@ -145,6 +168,7 @@ struct lor_vector_namespace_s const LOR_VECTOR_FUNCTION_NAMESPACE ={
 
 #include <stdlib.h>
 #include <string.h>
+#include <stdarg.h>
 
 int lor_vector_size (const struct lor_vector_s* vec) {
   return (vec->end - vec->begin) / vec->t_size;
@@ -184,10 +208,44 @@ int lor_vector_insert (struct lor_vector_s* vec, int pos, const void* val) {
   return LOR_VECTOR_EXIT_SUCCESS;
 }
 
-int lor_vector_push_back (struct lor_vector_s* vec, const void* val) {
+int lor_vector_push_back (struct lor_vector_s* vec, ...) {
   // Ensure there is allocated space available for the new value
   if (!lor_vector_auto_reserve(vec))
     return LOR_VECTOR_ALLOCATION_FAILURE;
+  // Enable access to variadic function arguements
+  va_list args;
+  va_start(args, vec);
+  //
+  switch(vec->t_size)
+  {
+    case sizeof(char):;
+      int char_val = va_arg(args, int); // automatic promotion of char to int
+      *((char*)vec->end) = (char) char_val;
+    break;
+    case sizeof(short):;
+      int short_val = va_arg(args, int); // va_arg automatic short to int
+      *((short*)vec->end) = (short) short_val;
+    break;
+    case sizeof(int):;
+      int int_val = va_arg(args, int);
+      *((char*)vec->end) = (char) int_val;
+    break;
+   
+    default:;
+      const void* ptr_val = va_arg(args, const void*);
+      if(!vec->copy_constructor)
+        memmove(vec->end, ptr_val, vec->t_size);
+      else
+      {
+        int cc_return = (*vec->copy_constructor) (vec->end, ptr_val);
+        if (cc_return) { return cc_return; } // copy constructor failure code
+      }
+  }
+
+  // End traversal of variadic function arguements
+  va_end(args);
+/*  
+  
   // Generate pointer to the new location and call the copy constructor
   if (vec->copy_constructor)
   {
@@ -197,6 +255,7 @@ int lor_vector_push_back (struct lor_vector_s* vec, const void* val) {
   }
   else // (no copy constructor specified)
     memmove (vec->end, val, vec->t_size);
+*/
   // Increment the end pointer and return
   vec->end += vec->t_size;
   return LOR_VECTOR_EXIT_SUCCESS;

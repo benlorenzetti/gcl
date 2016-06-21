@@ -44,5 +44,11 @@ int main() {
   city* city_ptr;
   while (city_ptr = (city*)vector.at(&japanese_cities, i++))
     printf("%s has population %d\n", city_ptr->name, city_ptr->population);
+
+  vector_t primes = LOR_VECTOR(int,NULL,NULL);
+  vector.push_back(&primes,(long) 2);
+  vector.push_back(&primes, 3);
+  for (i=0; i<vector.size(&primes); i++)
+    printf("%d\n", *((int*)vector.at(&primes, i)));
 }
 
