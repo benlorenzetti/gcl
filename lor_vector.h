@@ -22,15 +22,22 @@
  *  DEALINGS IN THE SOFTWARE.
  */
 
-/*  This header file is a part of a generic container library for doing
- *  "object-oriented" programming in C. A lor_vector stores metadata about, and
- *  points to an array which is automatically resized as needed by lor_vector
- *  functions. Stuctures of any size may be stored and a copy constructor and
- *  destructor can be registered with the container. The functionality is
- *  like C++'s standard vector class.
+/********************_The Lor Vector Container Library_***********************/
+/*
+ *  This header file is a part of a generic container library for programming
+ *  with object-oriented style in C. Lor vector implements a dynamic array
+ *  for storing generic types and user-defined structs.
  *
- *  The following return codes are defined for functions which return an
- *  integer. If you write your own copy constructor functions, they should
+ *  A vector is automatically resized as needed by lor_vector_ functions
+ *  provided for adding, removing, swapping, etc.
+ *  Stuctures of any size may be stored and a copy constructor and
+ *  destructor can be registered with the container to support deep copying.
+ *
+ *  The functionality is designed to be similar to C++'s std::vector class.
+ */
+
+/*  The following return codes are defined for lor_vector_ functions.
+ *  If you write your own copy constructor functions, they should
  *  return LOR_VECTOR_EXIT_SUCCESS or an error code of your own choosing
  *  outside the range of the library error codes defined here. 
  */
@@ -38,40 +45,66 @@
 #define LOR_VECTOR_EXIT_SUCCESS 0
 #define LOR_VECTOR_ALLOCATION_FAILURE 1
 
-/*  To avoid namespace conflicts with outside code, all functions, structures,
- *  and typedefs declared in this library are prefixed by "lor_vector_" and 
- *  all macros by "LOR_VECTOR_". Functions can be called using their full
- *  prefix name or through a namespace struct provided for shortening code.
- *  The default namespace is "lor_vector" but this can be changed by defining
- *  LOR_VECTOR_NAMESPACE in your code.
- *  
- *  For example, the push back function could be called the following ways:
- *
- *    1.   lor_vector_push_back();
- *
- *    2.   lor_vector.push_back();
- *
- *    3.   #define LOR_VECTOR_NAMESPACE vec
- *         ...
- *         vec.push_back();
+/*  The type "lor_vetlor_copy_f" is defined as a "pointer to a function with a
+ *  generic destination and source pointer parameters and integer return value".
+ *  Functions cast to this type can be registered as the copy constructor for
+ *  the user-defined struct being stored.
+ *  Likewise there is a type for a generic destructor that can be registered
+ *  with a Lor vector.
  */
-struct lor_vector_namespace_s;
-struct lor_vector_s;
 
-#define LOR_VECTOR_CONCAT(x, y) x ## y
-#define LOR_VECTOR_TYPENAME_MACRO(new_name) LOR_VECTOR_CONCAT(new_name, _t)
+typedef int (*lor_vector_copy_f) (void*, const void*); 
+typedef void (*lor_vector_dest_f) (void*);
 
-#define LOR_VECTOR_FUNCTION_NAMESPACE lor_vector
-#define LOR_VECTOR_TYPENAME lor_vector_t
-#ifdef LOR_VECTOR_NAMESPACE
-  #undef  LOR_VECTOR_FUNCTION_NAMESPACE
-  #define LOR_VECTOR_FUNCTION_NAMESPACE  LOR_VECTOR_NAMESPACE
-  #undef  LOR_VECTOR_TYPENAME
-  #define LOR_VECTOR_TYPENAME LOR_VECTOR_TYPENAME_MACRO(LOR_VECTOR_NAMESPACE)
-#endif
+/*  The template type for the container is stored in the lor_vector_s metadata.
+ */
 
-extern struct lor_vector_namespace_s const LOR_VECTOR_FUNCTION_NAMESPACE;
-typedef struct lor_vector_s LOR_VECTOR_TYPENAME;
+enum lor_vector_data_type
+{
+  CHAR,
+  SHORT,
+  INT,
+  LONG,
+  FLOAT,
+  DOUBLE,
+  PTR,
+  USER_DEFINED_STRUCT
+};
+
+/*  The structure lor_vector_s is used as a handle for the vector and has size
+ *  metadata and pointers to the dynamic array and template type functions.
+ *  When declaring a vector, the metadata should always be initialized with the
+ *  LOR_VECTOR macro to declare the template type and constructor/destructor
+ *  functions. An example declaration for a vector holding integers and using
+ *  the default copy constructor/destructor is:
+ *
+ *     lor_vector_s prime_numbers = LOR_INIT(int, NULL, NULL);
+ */
+
+struct lor_vector_s
+{
+  enum lor_vector_data_type d_type;
+  const int t_size;
+  lor_vector_copy_f copy_constructor;
+  lor_vector_dest_f destructor;
+  int alloc_len; // note: negative alloc_len indicates an explicit reservation
+  char* begin;   // that should not be shrunk by the auto_reserve() function
+  char* end;
+};
+
+#define LOR_VECTOR(T_type, constructor, destructor)                   \
+{                                                                     \
+  (!strcmp(#T_type,"char")?CHAR:   (!strcmp(#T_type,"short")?SHORT:   \
+  (!strcmp(#T_type,"int")?INT:     (!strcmp(#T_type,"long")?LONG:     \
+  (!strcmp(#T_type,"float")?FLOAT: (!strcmp(#T_type,"double")?DOUBLE: \
+  (strchr(#T_type,'*')?PTR:        USER_DEFINED_STRUCT))))))),        \
+  (sizeof(T_type)),                                                   \
+  ((int (*)(void*, const void*))(constructor)),                       \
+  ((void (*)(void*))(destructor)),                                    \
+  0,                                                                  \
+  NULL,                                                               \
+  NULL                                                                \
+}
 
 /*  Constants A and B define the reservation policy for the automatic memory
  *  managenment. When the current reserved space x is insufficient, the array
@@ -79,9 +112,8 @@ typedef struct lor_vector_s LOR_VECTOR_TYPENAME;
  *
  *                           x' = A*x + B
  *
- *  Reserved space will also shrink according to: x' = (x - B) / A.
- * 
- *   Valid ranges for A and B are:
+ *  Reserved space will also shrink according to: x' = (x - B) / A. 
+ *  Valid ranges for A and B are:
  *     {A e Real: A >= 1}  (to ensure growth)
  *     {B e Natural: B >= 1}  (to ensure growth for small x)
 */
@@ -89,39 +121,7 @@ typedef struct lor_vector_s LOR_VECTOR_TYPENAME;
 #define LOR_VECTOR_A 1.3
 #define LOR_VECTOR_B 1
 
-#define LOR_VECTOR_PASS_BY_VALUE_SIZE \
-  (sizeof(double) > sizeof(long) ? sizeof(double) : sizeof(long))
-  
-
-/*  The type "lor_vetlor_copy_f" is defined for a "pointer to a function with a
- *  generic dest and src pointer parameters and integer return value".
- *  Functions cast to this type can be registered as the copy constructor to be
- *  used by any container. And a similar type for destructors.
-*/
-
-typedef int (*lor_vector_copy_f) (void*, const void*); 
-typedef void (*lor_vector_dest_f) (void*);
-
-
-#define LOR_VECTOR(template_type, constructor, destructor) \
-{                                                          \
-  (sizeof(template_type)),                                 \
-  ((int (*)(void*, const void*))(constructor)),            \
-  ((void (*)(void*))(destructor)),                         \
-  0,                                                       \
-  NULL,                                                    \
-  NULL                                                     \
-}
-
-struct lor_vector_s {
-  const int t_size;
-  lor_vector_copy_f copy_constructor;
-  lor_vector_dest_f destructor;
-  int alloc_len; // negative alloc_len indicates an explicit reservation that
-        // should not be shrunk by the auto_reserve() function
-  char* begin;
-  char* end;
-};
+/******************************_Vector Functions_******************************/
 
 void* lor_vector_auto_reserve (struct lor_vector_s *);
 void* lor_vector_at (const struct lor_vector_s*, int);
@@ -148,7 +148,41 @@ int lor_vector_push_back (struct lor_vector_s*, ...);
 int lor_vector_insert (struct lor_vector_s*, int, const void*);
 int lor_vector_size (const struct lor_vector_s*);
 
-struct lor_vector_namespace_s {
+/***************************_Library Namespace Directives_********************/
+/*
+ *  To avoid namespace conflicts with outside code, all functions, structures,
+ *  and typedefs declared in this library are prefixed by "lor_vector_" and 
+ *  all macros by "LOR_VECTOR_". Functions can be called using their full
+ *  prefix name or through a namespace struct provided for shortening code.
+ *  The default namespace is "lor_vector" but this can be changed by defining
+ *  LOR_VECTOR_NAMESPACE in your code.
+ *  
+ *  For example, the push back function could be called the following ways:
+ *
+ *    1.   lor_vector_push_back();
+ *
+ *    2.   lor_vector.push_back();
+ *
+ *    3.   #define LOR_VECTOR_NAMESPACE vec
+ *         vec.push_back();
+ */
+
+#define LOR_VECTOR_CONCAT(x, y) x ## y
+#define LOR_VECTOR_TYPENAME_MACRO(new_name) LOR_VECTOR_CONCAT(new_name, _t)
+
+#define LOR_VECTOR_FUNCTION_NAMESPACE lor_vector
+#define LOR_VECTOR_TYPENAME lor_vector_t
+#ifdef LOR_VECTOR_NAMESPACE
+  #undef  LOR_VECTOR_FUNCTION_NAMESPACE
+  #define LOR_VECTOR_FUNCTION_NAMESPACE  LOR_VECTOR_NAMESPACE
+  #undef  LOR_VECTOR_TYPENAME
+  #define LOR_VECTOR_TYPENAME LOR_VECTOR_TYPENAME_MACRO(LOR_VECTOR_NAMESPACE)
+#endif
+
+typedef struct lor_vector_s LOR_VECTOR_TYPENAME;
+
+struct lor_vector_namespace_s
+{
   void* (*const auto_reserve)(struct lor_vector_s*);
   void* (*const at)(const struct lor_vector_s*, int);
   int (*const push_back)(struct lor_vector_s*, ...);
@@ -156,7 +190,8 @@ struct lor_vector_namespace_s {
   int (*const size)(const struct lor_vector_s*);
 };
 
-struct lor_vector_namespace_s const LOR_VECTOR_FUNCTION_NAMESPACE ={
+struct lor_vector_namespace_s const LOR_VECTOR_FUNCTION_NAMESPACE =
+{
   lor_vector_auto_reserve,
   lor_vector_at,
   lor_vector_push_back,
@@ -164,7 +199,10 @@ struct lor_vector_namespace_s const LOR_VECTOR_FUNCTION_NAMESPACE ={
   lor_vector_size
 };
 
-/* Begin the Implentation File */
+extern struct lor_vector_namespace_s const LOR_VECTOR_FUNCTION_NAMESPACE;
+
+
+/************************_Start of Implementation File_***********************/
 
 #include <stdlib.h>
 #include <string.h>
@@ -215,47 +253,47 @@ int lor_vector_push_back (struct lor_vector_s* vec, ...) {
   // Enable access to variadic function arguements
   va_list args;
   va_start(args, vec);
-  //
-  switch(vec->t_size)
+  /* If the template type is a machine type, then the user should have passed
+     it by value and can be directly assigned. If a user-defined type, then
+     the 2nd parameter is a generic pointer to memory and there may be a copy
+     constructor registered */
+  switch(vec->d_type)
   {
-    case sizeof(char):;
-      int char_val = va_arg(args, int); // automatic promotion of char to int
-      *((char*)vec->end) = (char) char_val;
+    case CHAR:;
+      *((char*)vec->end) = (char) va_arg(args, int);
     break;
-    case sizeof(short):;
-      int short_val = va_arg(args, int); // va_arg automatic short to int
-      *((short*)vec->end) = (short) short_val;
+    case SHORT:;
+      *((short*)vec->end) = (short) va_arg(args, int);
     break;
-    case sizeof(int):;
-      int int_val = va_arg(args, int);
-      *((char*)vec->end) = (char) int_val;
+    case INT:;
+      *((int*)vec->end) = va_arg(args, int);
     break;
-   
-    default:;
-      const void* ptr_val = va_arg(args, const void*);
+    case LONG:;
+      *((long*)vec->end) = va_arg(args, long);
+    break;
+    case FLOAT:;
+      *((float*)vec->end) = (float) va_arg(args, double);
+    break;
+    case DOUBLE:;
+      *((double*)vec->end) = va_arg(args, double);
+    break;
+    case PTR:;
+      *((void**)vec->end) = va_arg(args, void*);
+    break;
+    default:; // A user-defined type
+      const void* ptr_pass = va_arg(args, const void*);
       if(!vec->copy_constructor)
-        memmove(vec->end, ptr_val, vec->t_size);
+        memmove(vec->end, ptr_pass, vec->t_size);
       else
       {
-        int cc_return = (*vec->copy_constructor) (vec->end, ptr_val);
+        int cc_return = (*vec->copy_constructor) (vec->end, ptr_pass);
         if (cc_return) { return cc_return; } // copy constructor failure code
       }
   }
 
   // End traversal of variadic function arguements
   va_end(args);
-/*  
-  
-  // Generate pointer to the new location and call the copy constructor
-  if (vec->copy_constructor)
-  {
-    int cc_return = (*vec->copy_constructor) (vec->end, val);
-    if (cc_return)
-      return cc_return; // copy constructor failure code
-  }
-  else // (no copy constructor specified)
-    memmove (vec->end, val, vec->t_size);
-*/
+
   // Increment the end pointer and return
   vec->end += vec->t_size;
   return LOR_VECTOR_EXIT_SUCCESS;

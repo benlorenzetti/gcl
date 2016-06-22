@@ -34,7 +34,10 @@ void godzilla(city* dest) { // godzilla, aka city destructor
 }
 
 int main() {
+  /* Initialize a container with the storage type and the appropriate copy
+     constructor and destructor functions for deep copying. */
   vector_t japanese_cities = LOR_VECTOR(city, city_copy_constructor, godzilla);
+  // Add and remove and swap elements
   vector.push_back(&japanese_cities, city_const("Tokyo", 13510000));
   vector.push_back(&japanese_cities, city_const("Kyoto", 1474000));
   vector.insert(&japanese_cities, 1, city_const("Hiroshima", 1174000));
@@ -46,9 +49,10 @@ int main() {
     printf("%s has population %d\n", city_ptr->name, city_ptr->population);
 
   vector_t primes = LOR_VECTOR(int,NULL,NULL);
-  vector.push_back(&primes,(long) 2);
+  vector.push_back(&primes, 2);
   vector.push_back(&primes, 3);
-  for (i=0; i<vector.size(&primes); i++)
-    printf("%d\n", *((int*)vector.at(&primes, i)));
+  int* iterator = (int*)primes.begin;
+  while(iterator < (int*)primes.end)
+    printf("%d\n", *iterator++);
 }
 
