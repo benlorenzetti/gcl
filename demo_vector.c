@@ -1,58 +1,27 @@
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
-#define LOR_VECTOR_NAMESPACE vector
+// Define the desired namespace before including lor_vector.h
+#define LOR_VECTOR_NAMESPACE vec
 #include "lor_vector.h"
 
-typedef struct city_s {
-  char* name;
-  int population;
-} city;
+/* See city_class.h for how to create a "class" from a struct and proper
+   prototypes for "member" functions */
+#include "city_class.h"
 
-const city* const city_const (const char* name, int pop) {
-  static city static_city;
-  static char* static_name;
-  static_name = realloc(static_name, strlen(name));
-  strcpy(static_name, name);
-  static_city.name = static_name;
-  static_city.population = pop;
-  return &static_city;
-}
+int main()
+{
+  /* Initialize a container with the template type (city) and the appropriate
+     copy constructor and destructor functions for deep copying. */
+  vec_t japanese_cities = LOR_VECTOR_INIT(city, city_copy_constructor, godzilla);
 
-int city_copy_constructor(city* dest, const city* src) {
-  if(dest->name = malloc(1 + strlen(src->name)))
-    strcpy(dest->name, src->name);
-  else
-    return -1; // define your own error codes less than zero.
-  dest->population = src->population;
-  return 0; // success code must be zero
-}
+  // Some example vector operations
+  vec.push_back(&japanese_cities, city_const("Tokyo", 13510000));
+  vec.push_back(&japanese_cities, city_const("Kyoto", 1474000));
+  vec.insert(&japanese_cities, 1, city_const("Hiroshima", 1174000));
 
-void godzilla(city* dest) { // godzilla, aka city destructor
-  free(dest->name);
-}
-
-int main() {
-  /* Initialize a container with the storage type and the appropriate copy
-     constructor and destructor functions for deep copying. */
-  vector_t japanese_cities = LOR_VECTOR(city, city_copy_constructor, godzilla);
-  // Add and remove and swap elements
-  vector.push_back(&japanese_cities, city_const("Tokyo", 13510000));
-  vector.push_back(&japanese_cities, city_const("Kyoto", 1474000));
-  vector.insert(&japanese_cities, 1, city_const("Hiroshima", 1174000));
-
-  // Print city populations from the dynamic array
-  int i = 0;
-  city* city_ptr;
-  while (city_ptr = (city*)vector.at(&japanese_cities, i++))
-    printf("%s has population %d\n", city_ptr->name, city_ptr->population);
-
-  vector_t primes = LOR_VECTOR(int,NULL,NULL);
-  vector.push_back(&primes, 2);
-  vector.push_back(&primes, 3);
-  int* iterator = (int*)primes.begin;
-  while(iterator < (int*)primes.end)
-    printf("%d\n", *iterator++);
+  // Print each element in the vector
+  city* iter = (city*) japanese_cities.begin;
+  while(iter < (city*) japanese_cities.end)
+    printf("%s has population %d\n", iter->name, iter->pop), iter++;
 }
 

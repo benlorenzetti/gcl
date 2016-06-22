@@ -10,24 +10,26 @@
 
 <section class="introduction">
 <p>
-Named like C++, a lor_vector container is a dynamic array that grows and
-shrinks automatically as elements are added and removed.
-Elements are stored sequentially in a contiguous block of memory,
-basically an array that is managed on the heap. Lor vector is a part of
-a larger <a href="documentation.html">generic container library</a> allowing
-"objecty" programming in C with functions analogous to those in the C++ STL.
+Inspired by C++'s std::vector class, a Lor vector container is a dynamic array
+that grows and shrinks automatically as elements are added and removed.
+Elements are stored sequentially in a contiguous block of memory and
+operations like push_back() and insert() use a small handle with
+pointers and size metadata. Lor vector is part of a larger
+<a href="documentation.html">generic container library</a> for programming in
+object-oriented style in C.
 </p>
 <p>
-Accessing an element is O(1) fast because its position is the beginning of the
-array plus an offset based on the type size. Adding or removing elements at the
-back is usually O(1) fast unless an interal call to realloc() must be made.
-However, insertions are O(n) costly because all elements after the insertion
-point have to be copy shifted rightwards.
-</p>
-<p>
-Any struct can be stored after its size is registered during initialization.
-For structures with pointers to other memory, deep copying is supported after
+Any struct can be stored by registering its size during initialization.
+For structures with pointers to other memory, deep copying is supported by
 registering copy constructor and destructor functions during initialazation.
+</p>
+<p>
+Accessing elements in a vector is O(1) fast because position can be
+determined by pointer arithmetic.
+Adding or removing elements at the back is usually O(1) fast unless an internal
+call to realloc() must be made. However, insertion and deletion are O(n) costly
+because all elements after the insertion point have to be copy shifted
+rightwards.
 </p>
 <p>
 For large n, memory is allocated exponetially in powers of 1.3 (this can be
@@ -36,48 +38,7 @@ reallocation adds space for at least LOR_VECTOR_B new elements.
 </p>
 </section>
 
-<nav>
-  <ul>
-    <li><a href="#namespace">Library namespace</a></li>
-    <li><a href="#data-types">Library types</a></li>
-    <li><a href="#functions">Library functions</a></li>
-    <li><a href="#example">Example code</a></li>
-  </ul>
-</nav>
-
-<section id="namespace">
-<h2>Library namespace</h2>
-<p>
-  All exterally visible types, functions, and macros are prefixed with
-  "lor_vector_" or "LOR_VECTOR_" to avoid namespace collisions.
-  If this make your code too verbose, the optional LOR_VECTOR_NAMESPACE
-  can be defined.
-</p>
-<code style="float:left;margin:10px;">
-    #include &lt;stdio.h&gt;<br/>
-    #include "lor_vector.h"<br/>
-    <br/>
-    int main() {<br/>
-    &nbsp;&nbsp;lor_vector_t prime_numbers = LOR_VECTOR(int, NULL, NULL);<br/>
-    &nbsp;&nbsp;lor_vector_push_back(&amp;prime_numbers, (void*)2);<br/>
-    &nbsp;&nbsp;lor_vector_push_back(&amp;prime_numbers, (void*)3);<br/>
-    &nbsp;&nbsp;printf("vector size = %d\n", lor_vector_size(&prime_numbers));<br/>
-    }
-</code>
-<code style="float:left;margin:10px;">
-    #include &lt;stdio.h&gt;<br/>
-    #define LOR_VECTOR_NAMESPACE vec<br/>
-    #include "lor_vector.h"<br/>
-    <br/>
-    int main() {<br/>
-    &nbsp;&nbsp;vec_t prime_numbers = LOR_VECTOR_INIT(int, NULL, NULL);<br/>
-    &nbsp;&nbsp;vec.push_back(&amp;prime_numbers, (void*)2);<br/>
-    &nbsp;&nbsp;vec.push_back(&amp;prime_numbers, (void*)3);<br/>
-    &nbsp;&nbsp;printf("vector size = %d\n", vec.size(&prime_numbers));<br/>
-    }
-</code>
-<div style="clear:left"></div>
-</section>
+<hr/>
 
 <section id="data-types">
 <h2>Library types</h2>
@@ -87,9 +48,63 @@ reallocation adds space for at least LOR_VECTOR_B new elements.
 <h2>Library functions</h2>
 </section>
 
+<hr/>
+
+<section id="namespace">
+<h2>Library namespace</h2>
+<p>
+  All exterally visible functions and types in the library are prefixed with
+  "lor_vector_". Macros and directives are prefixed with "LOR_VECTOR_".
+  If this make your code too verbose, the optional LOR_VECTOR_NAMESPACE
+  can be defined.
+</p>
+<code style="float:left;margin:15px;">
+    #include &lt;stdio.h&gt;<br/>
+    #include "lor_vector.h"<br/>
+    <br/>
+    int main() {<br/>
+    &nbsp;&nbsp;lor_vector_t primes = LOR_VECTOR_INIT(int, NULL, NULL);<br/>
+    &nbsp;&nbsp;lor_vector_push_back(&amp;primes, 2);<br/>
+    &nbsp;&nbsp;lor_vector_push_back(&amp;primes, 3);<br/>
+    &nbsp;&nbsp;printf("vector size = %d\n", lor_vector_size(&amp;primes));<br/>
+    }
+</code>
+<code style="float:left;margin:15px;">
+    #include &lt;stdio.h&gt;<br/>
+    #define LOR_VECTOR_NAMESPACE vec<br/>
+    #include "lor_vector.h"<br/>
+    <br/>
+    int main() {<br/>
+    &nbsp;&nbsp;vec_t primes = LOR_VECTOR_INIT(int, NULL, NULL);<br/>
+    &nbsp;&nbsp;vec.push_back(&amp;primes, 2);<br/>
+    &nbsp;&nbsp;vec.push_back(&amp;primes, 3);<br/>
+    &nbsp;&nbsp;printf("vector size = %d\n", vec.size(&amp;primes));<br/>
+    }
+</code>
+<div style="clear:left"></div>
+</section>
+
+<hr/>
+
 <section id="example">
 <h2>Example Code</h2>
-<a class="c-listing" href="demo_vector.c">demo_vector.c</a>
+<p>
+The header file city_class.h
+shows how you can define a "class" in C. Specifically the copy constructor
+function shows the prototype needed for registering a copy constructor with a
+generic container.
+The city structure has a pointer to another place in memory that holds the
+city name; a so called "deep pointer" because naively copying just the struct
+is not enough to create a wholly new object.
+</p>
+<p>
+The file demo_vector.c shows how such a user-defined class can be used with
+the generic container. 
+<p/>
+<a href="../lor_vector.h">lor_vector.h</a>
+<code class="c-listing"><a href="../city_class.h">city_class.h</a></code>
+<code class="c-listing"><a href="../demo_vector.c">demo_vector.c</a></code>
+
 </section>
 
 

@@ -92,7 +92,7 @@ struct lor_vector_s
   char* end;
 };
 
-#define LOR_VECTOR(T_type, constructor, destructor)                   \
+#define LOR_VECTOR_INIT(T_type, constructor, destructor)              \
 {                                                                     \
   (!strcmp(#T_type,"char")?CHAR:   (!strcmp(#T_type,"short")?SHORT:   \
   (!strcmp(#T_type,"int")?INT:     (!strcmp(#T_type,"long")?LONG:     \
