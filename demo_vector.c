@@ -12,7 +12,7 @@ int main()
 {
   /* Initialize a container with the template type (city) and the appropriate
      copy constructor and destructor functions for deep copying. */
-  vec_t japanese_cities = LOR_VECTOR_INIT(city, city_copy_constructor, godzilla);
+  vec_t japanese_cities = LOR_VECTOR(city, city_copy_constructor, godzilla);
 
   // Some example vector operations
   vec.push_back(&japanese_cities, city_const("Tokyo", 13510000));

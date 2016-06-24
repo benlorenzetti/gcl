@@ -53,7 +53,7 @@
  *  with a Lor vector.
  */
 
-typedef int (*lor_vector_copy_f) (void*, const void*); 
+typedef void (*lor_vector_copy_f) (void*, const void*); 
 typedef void (*lor_vector_dest_f) (void*);
 
 /*  The template type for the container is stored in the lor_vector_s metadata.
@@ -92,14 +92,14 @@ struct lor_vector_s
   char* end;
 };
 
-#define LOR_VECTOR_INIT(T_type, constructor, destructor)              \
+#define LOR_VECTOR(T_type, constructor, destructor)                   \
 {                                                                     \
   (!strcmp(#T_type,"char")?CHAR:   (!strcmp(#T_type,"short")?SHORT:   \
   (!strcmp(#T_type,"int")?INT:     (!strcmp(#T_type,"long")?LONG:     \
   (!strcmp(#T_type,"float")?FLOAT: (!strcmp(#T_type,"double")?DOUBLE: \
   (strchr(#T_type,'*')?PTR:        USER_DEFINED_STRUCT))))))),        \
   (sizeof(T_type)),                                                   \
-  ((int (*)(void*, const void*))(constructor)),                       \
+  ((void (*)(void*, const void*))(constructor)),                       \
   ((void (*)(void*))(destructor)),                                    \
   0,                                                                  \
   NULL,                                                               \
@@ -145,7 +145,7 @@ int lor_vector_push_back (struct lor_vector_s*, ...);
  *           LOR_EXIT_SUCCESS.
 */
 
-int lor_vector_insert (struct lor_vector_s*, int, const void*);
+int lor_vector_insert (struct lor_vector_s*, int, ...);
 int lor_vector_size (const struct lor_vector_s*);
 
 /***************************_Library Namespace Directives_********************/
@@ -186,7 +186,7 @@ struct lor_vector_namespace_s
   void* (*const auto_reserve)(struct lor_vector_s*);
   void* (*const at)(const struct lor_vector_s*, int);
   int (*const push_back)(struct lor_vector_s*, ...);
-  int (*const insert)(struct lor_vector_s*, int, const void*);
+  int (*const insert)(struct lor_vector_s*, int, ...);
   int (*const size)(const struct lor_vector_s*);
 };
 
@@ -212,39 +212,74 @@ int lor_vector_size (const struct lor_vector_s* vec) {
   return (vec->end - vec->begin) / vec->t_size;
 }
 
-int lor_vector_insert (struct lor_vector_s* vec, int pos, const void* val) {
+int lor_vector_insert (struct lor_vector_s* vec, int pos, ...) {
   // Ensure there is allocated space available for the new array
   if (!lor_vector_auto_reserve(vec))
     return LOR_VECTOR_ALLOCATION_FAILURE;
+
   // Shift rightwards all elements starting at pos
   if (vec->copy_constructor)
   {
     char* ptr;
     for (ptr=vec->end; ptr >= vec->begin + pos*vec->t_size; ptr -= vec->t_size)
-    {
-      int cc_return = (*vec->copy_constructor) (ptr, ptr - vec->t_size);
-      if (cc_return)
-        return cc_return;
-    }
+      (*vec->copy_constructor) (ptr, ptr - vec->t_size);
   }
-  else // (no copy constructor specified)
+  else // rightward shift if (no copy constructor specified)
   {
     char* pos_ptr = vec->begin + pos * vec->t_size;
     int copy_byte_length = vec->t_size * (lor_vector_size(vec) - pos);
     memmove (pos_ptr + vec->t_size, pos_ptr, copy_byte_length);
   }
-  // Copy the value to the insert position
-  if (vec->copy_constructor)
+
+  // Enable access to the variadic parameter
+  va_list args;
+  va_start(args, pos);
+
+  // Copy the 3rd parameter into the insert position
+  char* insert_pos = vec->begin + pos * vec->t_size;
+  /* If the template type is a machine type, then the user should have passed
+     it by value and can be directly assigned. If a user-defined type, then
+     the 2nd parameter is a generic pointer to memory and there may be a copy
+     constructor registered */
+  switch(vec->d_type)
   {
-    int cc_ret = (*vec->copy_constructor)(vec->begin+pos*vec->t_size, val);
-    if (cc_ret) return cc_ret;
+    case CHAR:;
+      *((char*)insert_pos) = (char) va_arg(args, int);
+    break;
+    case SHORT:;
+      *((short*)insert_pos) = (short) va_arg(args, int);
+    break;
+    case INT:;
+      *((int*)insert_pos) = va_arg(args, int);
+    break;
+    case LONG:;
+      *((long*)insert_pos) = va_arg(args, long);
+    break;
+    case FLOAT:;
+      *((float*)insert_pos) = (float) va_arg(args, double);
+    break;
+    case DOUBLE:;
+      *((double*)insert_pos) = va_arg(args, double);
+    break;
+    case PTR:;
+      *((void**)insert_pos) = va_arg(args, void*);
+    break;
+    default:; // A user-defined type
+      const void* ptr_pass = va_arg(args, const void*);
+      if(!vec->copy_constructor)
+        memmove(insert_pos, ptr_pass, vec->t_size);
+      else
+        (*vec->copy_constructor) (insert_pos, ptr_pass);
   }
-  else
-    memmove (vec->begin + pos * vec->t_size, val, vec->t_size);
-  // Increment the end pointer and return success indicator
+
+  // End traversal of variadic function arguements
+  va_end(args);
+
+  // Increment the end pointer and return
   vec->end += vec->t_size;
   return LOR_VECTOR_EXIT_SUCCESS;
-}
+
+}// lor_vector_insert() END
 
 int lor_vector_push_back (struct lor_vector_s* vec, ...) {
   // Ensure there is allocated space available for the new value
@@ -285,10 +320,7 @@ int lor_vector_push_back (struct lor_vector_s* vec, ...) {
       if(!vec->copy_constructor)
         memmove(vec->end, ptr_pass, vec->t_size);
       else
-      {
-        int cc_return = (*vec->copy_constructor) (vec->end, ptr_pass);
-        if (cc_return) { return cc_return; } // copy constructor failure code
-      }
+        (*vec->copy_constructor) (vec->end, ptr_pass);
   }
 
   // End traversal of variadic function arguements
@@ -297,7 +329,7 @@ int lor_vector_push_back (struct lor_vector_s* vec, ...) {
   // Increment the end pointer and return
   vec->end += vec->t_size;
   return LOR_VECTOR_EXIT_SUCCESS;
-}
+}// lor_vector_push_back() END
 
 void* lor_vector_at (const struct lor_vector_s* vec, int n) {
   if (n >= (vec->end - vec->begin) / vec->t_size)

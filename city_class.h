@@ -17,14 +17,11 @@ const city* const city_const (const char* name, int population)
   return &static_city;
 }
 
-int city_copy_constructor(city* dest, const city* src)
+void city_copy_constructor(city* dest, const city* src)
 {
-  if(dest->name = malloc(1 + strlen(src->name)))
-    strcpy(dest->name, src->name);
-  else
-    return -1;
+  dest->name = malloc(1 + strlen(src->name));
+  strcpy(dest->name, src->name);
   dest->pop = src->pop;
-  return 0;
 }
 
 void godzilla(city* dest)
