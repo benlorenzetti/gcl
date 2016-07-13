@@ -99,7 +99,7 @@ struct lor_vector_s
   (!strcmp(#T_type,"float")?FLOAT: (!strcmp(#T_type,"double")?DOUBLE: \
   (strchr(#T_type,'*')?PTR:        USER_DEFINED_STRUCT))))))),        \
   (sizeof(T_type)),                                                   \
-  ((void (*)(void*, const void*))(constructor)),                       \
+  ((void (*)(void*, const void*))(constructor)),                      \
   ((void (*)(void*))(destructor)),                                    \
   0,                                                                  \
   NULL,                                                               \
@@ -139,8 +139,8 @@ int lor_vector_push_back (struct lor_vector_s*, ...);
  *                int lor_vector_push_back(struct lor_vector_s*, int);
  *            or
  *                int lor_vector_push_back(struct lor_vector_s*, const void*);
- *            if the type is a structure larger than the basic machine types.)
- *  return:  LOR_EXIT_SUCCESS (0), or a LOR_VECTOR_<> failure code, or a user
+ *            if the type is a structure different than a predefined C type.)
+ *  return:  LOR_EXIT_SUCCESS (0), or a LOR_VECTOR_ failure code, or a user
  *           defined code from the copy contstructor if it did not return
  *           LOR_EXIT_SUCCESS.
 */

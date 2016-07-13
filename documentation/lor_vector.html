@@ -68,7 +68,7 @@ For small n, each reallocation adds space for at least
 <section>
 <h1>Template macro <span>LOR_VECTOR()</span></h1>
 <p>
-For Lor vector to work with any data type, the types' size must be known.
+Lor vector works with any data type, but the types' size must be known.
 Consequently, you must register the data type when declaring a lor vector
 container. This is done in the first parameter of the 
 <span>LOR_VECTOR()</span> initialization macro.
@@ -85,10 +85,10 @@ lor_vector_t price_list = LOR_VECTOR(item, NULL, NULL);
 <p>
 For some structures, you may wish to have copy constructor and
 destructor functions associated with them
-(see <a href="#">some advatages of object oriented programming</a>).
+(see <a href="#">some advatages of C++ object oriented programming</a>).
 To be registered with a lor vector, the copy constructor function should have a
 pointer parameter for the copy destination, a constant pointer parameter for the
-source, and void return. A destructor function has only one pointer parameter.
+source, and void return. A destructor function should have one pointer parameter.
 For example,
 </p>
 <pre>
