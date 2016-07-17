@@ -23,5 +23,6 @@ int main()
   city* iter = (city*) japanese_cities.begin;
   while(iter < (city*) japanese_cities.end)
     printf("%s has population %d\n", iter->name, iter->pop), iter++;
+  return 0;
 }
 

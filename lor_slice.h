@@ -1,5 +1,5 @@
-#ifndef LOR_VECTOR_H
-#define LOR_VECTOR_H
+#ifndef LOR_SLICE_H
+#define LOR_SLICE_H
 
 /*  Copyright (c) 2016 Ben Lorenzetti
  *
@@ -22,27 +22,27 @@
  *  DEALINGS IN THE SOFTWARE.
  */
 
-/********************_The Lor Vector Container Library_***********************/
+/********************************_Lor Slices_**********************************/
 /*
- *  This header file is a part of a generic container library for programming
- *  with object-oriented style in C. Lor vector implements a dynamic array
- *  for storing generic types and user-defined structs.
+ *  This header file is a part of a generic container library (GCL) that
+ *  implements polymorphic (ie reusable) data structures and algorithms in C.
+ *  At the of expense losing some compile-time type checking, this GCL gives
+ *  many common data structures/algorithms where the
+ *  data elements/types operated on can be any C type or user-defined struct.
  *
- *  A vector is automatically resized as needed by the lor_vector_ functions
- *  provided for adding, removing, swapping, etc.
- *  Stuctures of any size may be stored and a copy constructor and
- *  destructor can be registered with the container to support deep copying.
- *
- *  The functionality is designed to be similar to C++'s std::vector class.
- *  In C++, classes mix the ideas of function namespace and data structures.
- *  For object-oriented programming style in C, you can mix these manually.
- *  For example,
- *                        complex1.add(complex2);
- *
- *  in C++, could be implemented equivalently as:
- *
- *                  complex.add(&complex1, complex2);
- *  in C.
+ *  For reference, C++ Standard Template Library has containers and algorithms,
+ *  and relates them using iterators, which are basically like pointers.
+ *  For example a linear search algorithm could operate on a forward iterator
+ *  from either an array or a list: the iterator handles advancing to the next
+ *  value to make the algorithm polymorphic across many data structures.
+ *  
+ *  This GCL is closely modeled after the C++ STL, but introduces a fourth
+ *  concept, slices, so now the programmer has more to keep track of:
+ *  (1) containers, (2) algorithms, (3) iterators, and (4) slices.
+ *  Fortunately slices are simple, whenever you need specify a range of
+ *  elements in a data structure, instead of two iterators you use a slice.
+ *  The idea is not new, for example Mr. Alexandrescu used ranges in the
+ *  D standard library.
  */
 
 /*  The following return codes are defined for lor_vector_ functions.
@@ -97,8 +97,8 @@ struct lor_vector_s
   lor_vector_copy_f copy_constructor;
   lor_vector_dest_f destructor;
   int alloc_len; // note: negative alloc_len indicates an explicit reservation
-  void* begin;   // that should not be shrunk by the auto_reserve() function
-  void* end;
+  char* begin;   // that should not be shrunk by the auto_reserve() function
+  char* end;
 };
 
 #define LOR_VECTOR(T_type, constructor, destructor)                   \
@@ -230,7 +230,7 @@ int lor_vector_insert (struct lor_vector_s* vec, int pos, ...) {
   if (vec->copy_constructor)
   {
     char* ptr;
-    for (ptr=vec->end; ptr >= (char*)vec->begin + pos*vec->t_size; ptr -= vec->t_size)
+    for (ptr=vec->end; ptr >= vec->begin + pos*vec->t_size; ptr -= vec->t_size)
       (*vec->copy_constructor) (ptr, ptr - vec->t_size);
   }
   else // rightward shift if (no copy constructor specified)
